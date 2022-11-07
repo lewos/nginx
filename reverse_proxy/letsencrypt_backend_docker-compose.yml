@@ -8,7 +8,6 @@ services:
         dockerfile: Dockerfile
     ports:
         - "80:80"
-        # dsp de configurar y obtener el certificado, descomentarel puerto 443
         - "443:443"
     volumes:
           #<carpeta del host> : <carpeta del contenedor>
