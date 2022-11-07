@@ -1,0 +1,156 @@
+version: '3.9'
+
+services:
+  proxy:
+    image: lewos/reverseproxy_nginx
+    build:
+        context:  ./nginx
+        dockerfile: Dockerfile
+    ports:
+        - "80:80"
+        # dsp de configurar y obtener el certificado, descomentarel puerto 443
+        - "443:443"
+    volumes:
+          #<carpeta del host> : <carpeta del contenedor>
+          - ${PWD}/nginx/nginx.conf:/etc/nginx/nginx.conf
+          - ${PWD}:/letsencrypt
+          - ${PWD}/certs:/etc/letsencrypt
+
+  otto.stock:
+    image: lewos/ottostock:latest
+    depends_on:
+      - mssql-server
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Pa$$w0rd2019"
+      MSSQL_PID: "Express"
+      MSSQL_HOST: "mssql-server-new"
+    ports:
+      - "8087:80"
+
+  otto.stockrequests:
+    image: lewos/ottostockrequests:latest
+    depends_on:
+      - mssql-server
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Pa$$w0rd2019"
+      MSSQL_PID: "Express"
+      MSSQL_HOST: "mssql-server-new"
+    ports:
+      - "8086:80"
+
+  otto.products:
+    image: lewos/ottoproducts:latest
+    depends_on:
+      - mssql-server
+      - otto.m.tokens
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Pa$$w0rd2019"
+      MSSQL_PID: "Express"
+      MSSQL_HOST: "mssql-server-new"
+      URL_OTTO_TOKENS: "http://otto.m.tokens"
+      T_USER_AGENT: "(Otto(leo.carmi@gmail.com))"
+    ports:
+      - "8085:80"
+
+  otto.m.tokens:
+    image: lewos/ottomtokens:latest
+    depends_on:
+      - mssql-server
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Pa$$w0rd2019"
+      MSSQL_PID: "Express"
+      MSSQL_HOST: "mssql-server-new"
+      APP_ID: "744560801851200"
+      CLIENT_SECRET: "Bi64oFtxgykxm6HxTct19JY89hty21zp"
+    ports:
+      - "8084:80"
+
+  otto.orders:
+    image: lewos/ottoorders:latest
+    depends_on:
+      - mssql-server
+      - otto.m.tokens
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Pa$$w0rd2019"
+      MSSQL_PID: "Express"
+      MSSQL_HOST: "mssql-server-new"
+      APP_ID: "744560801851200"
+      APP_MUSER_ID_OWNER: "302735131"
+      CLIENT_SECRET: "Bi64oFtxgykxm6HxTct19JY89hty21zp"
+      T_APP_ID: "5294"
+      T_CLIENT_SECRET: "bg5cQxBxlv9fqwtq6b77ewDivPVj85EyAGtWf3M7YysAOBsZ"
+      REDIRECT_URI: "https://139.144.172.25:9083/api/MOrders"
+      URL_OTTO_TOKENS: "http://otto.m.tokens"
+      T_USER_AGENT: "(Otto(leo.carmi@gmail.com))"
+      T_ORDERS_URL_WEBHOOK: "https://139.144.172.25:9083/api/TOrders"
+      ASPNETCORE_URLS: "https://+;http://+"
+      ASPNETCORE_HTTPS_PORT: "9083"
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_Kestrel__Certificates__Default__Password: pa55w0rd!
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /Otto/Otto.orders.pfx
+    volumes:
+      - ~/Otto:/Otto:ro
+    ports:
+      - "8083:80"
+      - "9083:443"
+  
+  otto.requests:
+    image: lewos/ottorequests:latest
+    depends_on:
+      - mssql-server
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Pa$$w0rd2019"
+      MSSQL_PID: "Express"
+      MSSQL_HOST: "mssql-server-new"
+    ports:
+      - "8082:80"
+
+  otto.companies:
+    image: lewos/ottocompanies:latest
+    depends_on:
+      - mssql-server
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Pa$$w0rd2019"
+      MSSQL_PID: "Express"
+      MSSQL_HOST: "mssql-server-new"
+    ports:
+      - "8081:80"
+  
+  otto.users:
+    image: lewos/ottousers:latest
+    depends_on:
+      - mssql-server
+      - otto.requests
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Pa$$w0rd2019"
+      MSSQL_PID: "Express"
+      MSSQL_HOST: "mssql-server-new"
+      URL_OTTO_REQUESTS: "http://otto.requests"
+      URL_OTTO_TOKENS: "http://otto.m.tokens"
+    ports:
+      - "8080:80"
+  
+  mssql-server:
+    container_name: mssql-server-new
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    environment:
+        ACCEPT_EULA: "Y"
+        MSSQL_SA_PASSWORD: "Pa$$w0rd2019"
+        MSSQL_PID: "Express"
+    volumes:
+      - mssql-server-data:/var/opt/mssql/data
+    user: root
+    ports:
+      - "1433:1433"    
+
+volumes:
+  mssql-server-data:
+         
